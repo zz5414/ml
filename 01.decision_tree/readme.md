@@ -17,6 +17,10 @@ machine learning from scratch
 		1. sklearn
 		2. 직접 구현
 		3. Threshold가 2.5, Depth=1 인지 확인
+	2. (1, 2, 0), (2, 1, 0), (2, 2, 1), (3, 1, 0), (3, 2, 1) 데이터셋 (x1, x2, y) 테스트
+	3. y가 세개인 데이터
+	
+
 
 
 ### Reference

@@ -1,6 +1,7 @@
 import numpy as np
 from sklearn import datasets
 import matplotlib.pyplot as plt
+import pandas as pd
 
 
 
@@ -160,8 +161,8 @@ class DecisionTreeClassifier:
 
 
 def generate_dataset():
-    X = np.array([[1, 0], [3, 0], [2, 0]])
-    y = np.array([1, 0, 1])
+    X = np.array([[1, 2], [2, 1], [2, 2], [3, 1], [3, 2]])
+    y = np.array([0, 0, 1, 0, 1])
 
     for class_value in range(2):
         row_ix = np.where(y == class_value)
@@ -220,44 +221,52 @@ def get_gini(count_dict, total_num):
     return 1 - sub
 
 
-def get_count_dict(df):
-    return pd.pivot_table(df, index=['y'], aggfunc='count')['X'].to_dict()
+def get_count_dict(df, col_str):
+    return pd.pivot_table(df, index=['y'], aggfunc='count')[col_str].to_dict()
 
 
 def test_for_gini(X, y):
-    import pandas as pd
-    df = pd.DataFrame({"X":X[:, 0],
-                       "y":y})
-    df = df.sort_values("X", ignore_index=True)
+    df = pd.DataFrame(np.concatenate((X, y.reshape(5, 1)), axis=1), columns=["X", "X2", "y"], dtype=np.uint32)
+    feature_num = X.shape[1]
 
-    feature_list = df.drop_duplicates(['y'])['y'].to_list()
-
-    feature_num_dict = get_count_dict(df)
-
+    feature_num_dict = get_count_dict(df, 'X')
     total_num = len(df)
-
     best_gini = get_gini(feature_num_dict, total_num)
 
-    best_idx = 0
+    for feature_idx in range(feature_num):
+        data_df = df.iloc[:, [feature_idx, 2]]                  # 2-> y가 있는 column idx
+        column_str = df.columns[feature_idx]
+        data_df = data_df.sort_values(column_str, ignore_index=True)
 
-    lt_num = 0
-    rt_num = total_num
-    for idx in range(1, total_num):
-        lt_num += 1
-        rt_num -= 1
 
-        lt_df = df.loc[:idx-1]
-        rt_df = df.loc[idx:]
+        # start
+        best_idx = 0
 
-        lt_gini = get_gini(get_count_dict(lt_df), lt_num)
-        rt_gini = get_gini(get_count_dict(rt_df), rt_num)
+        lt_num = 0
+        rt_num = total_num
+        for idx in range(1, total_num):
+            prev_feature_value = data_df[column_str][idx - 1]
+            curr_feature_value = data_df[column_str][idx]
+            if prev_feature_value == curr_feature_value:
+                continue
 
-        candidate_gini = (lt_num * lt_gini + rt_num * rt_gini) / total_num
-        if candidate_gini < best_gini:
-            best_idx = idx
-            best_gini = candidate_gini
+            lt_num = len(data_df[data_df[column_str] < curr_feature_value])
+            rt_num = total_num - lt_num
 
-    best_threshold = (df['X'].loc[best_idx] + df['X'].loc[best_idx-1]) / 2
+            lt_df = data_df[data_df[column_str] < curr_feature_value]
+            rt_df = data_df[~(data_df[column_str] < curr_feature_value)]
+
+            lt_gini = get_gini(get_count_dict(lt_df, column_str), lt_num)
+            rt_gini = get_gini(get_count_dict(rt_df, column_str), rt_num)
+
+            candidate_gini = (lt_num * lt_gini + rt_num * rt_gini) / total_num
+            if candidate_gini < best_gini:
+                best_feaute_idx = feature_idx
+                best_idx = idx
+                best_gini = candidate_gini
+                best_threshold = (prev_feature_value + curr_feature_value) / 2
+
+
     a = 0
 
 
