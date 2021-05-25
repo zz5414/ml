@@ -1,6 +1,5 @@
 import numpy as np
 from sklearn import datasets
-from mlxtend.plotting import plot_decision_regions
 import matplotlib.pyplot as plt
 
 
@@ -161,8 +160,8 @@ class DecisionTreeClassifier:
 
 
 def generate_dataset():
-    X = np.array([[1, 0], [2, 0], [3, 0]])
-    y = np.array([1, 1, 0])
+    X = np.array([[1, 0], [3, 0], [2, 0]])
+    y = np.array([1, 0, 1])
 
     for class_value in range(2):
         row_ix = np.where(y == class_value)
@@ -214,8 +213,59 @@ def visualize_boundary(model, X, y):
                            zorder=1)
 
 
+def get_gini(count_dict, total_num):
+    sub = 0
+    for num in count_dict.values():
+        sub += (num/total_num)**2
+    return 1 - sub
+
+
+def get_count_dict(df):
+    return pd.pivot_table(df, index=['y'], aggfunc='count')['X'].to_dict()
+
+
+def test_for_gini(X, y):
+    import pandas as pd
+    df = pd.DataFrame({"X":X[:, 0],
+                       "y":y})
+    df = df.sort_values("X", ignore_index=True)
+
+    feature_list = df.drop_duplicates(['y'])['y'].to_list()
+
+    feature_num_dict = get_count_dict(df)
+
+    total_num = len(df)
+
+    best_gini = get_gini(feature_num_dict, total_num)
+
+    best_idx = 0
+
+    lt_num = 0
+    rt_num = total_num
+    for idx in range(1, total_num):
+        lt_num += 1
+        rt_num -= 1
+
+        lt_df = df.loc[:idx-1]
+        rt_df = df.loc[idx:]
+
+        lt_gini = get_gini(get_count_dict(lt_df), lt_num)
+        rt_gini = get_gini(get_count_dict(rt_df), rt_num)
+
+        candidate_gini = (lt_num * lt_gini + rt_num * rt_gini) / total_num
+        if candidate_gini < best_gini:
+            best_idx = idx
+            best_gini = candidate_gini
+
+    best_threshold = (df['X'].loc[best_idx] + df['X'].loc[best_idx-1]) / 2
+    a = 0
+
+
+
 if __name__ == "__main__":
     X, y = generate_dataset()
+    test_for_gini(X, y)
+
     clf = create_decision_tree(X, y, 2)
     sk_clf = create_sk_decision_tree(X, y, 2)
     print(sk_clf.predict([[4, 0]]))
